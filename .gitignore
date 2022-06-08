@@ -1,3 +1,12 @@
+# Data folder
+data
+
+# Latex folder
+report
+
+# Test notebook
+notebook_test.ipynb
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

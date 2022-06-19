@@ -7,24 +7,24 @@ from tqdm import tqdm
 
 class FeatureExtractor: 
     
-    SAMPLE_FIXED_LEN = 140526
-    
     def __init__(self, 
                  speech_path: str, 
                  song_path: str, 
                  save_path: str, 
                  verbose: bool, 
-                 file_per_actor_limit: int) -> None:
+                 file_per_actor_limit: int, 
+                 audio_fixed_size: int) -> None:
         
         self.speech_path          = speech_path
         self.song_path            = song_path   
         self.verbose              = verbose
         self.file_per_actor_limit = file_per_actor_limit
         self.save_path            = save_path
+        self.audio_fixed_size     = audio_fixed_size
     
     def _extract_features(self, path: str) -> np.array:       
         y, sr = lb.load(path, sr = None)
-        y = lb.util.fix_length(y, FeatureExtractor.SAMPLE_FIXED_LEN)
+        y = lb.util.fix_length(y, self.audio_fixed_size)
         
         mfcc = lb.feature.mfcc(y, sr, n_mfcc=13)
         x, y = mfcc.shape
@@ -35,9 +35,7 @@ class FeatureExtractor:
         parts = [int(e) for e in filename[:filename.find(".")].split("-")]
         # all labels starts from one
         emotion     = parts[2]-1
-        intensity   = parts[3]-1
-        statement   = parts[4]-1
-        return np.array([emotion, intensity, statement])
+        return np.array([emotion])
     
     def _list_files_actor(self, i: int, mode: str) -> list:
         
@@ -68,11 +66,10 @@ class FeatureExtractor:
             f4 = np.load(open(p4, "rb"))
             return f1, f2, f3, f4
             
-        
         speech_feature_array, song_feature_array = [], []
         speech_label_array, song_label_array = [], []
         if self.verbose: 
-            print("Extracting features from audio files: ")
+            print("Extracting features from audio files.")
             
         gen = range(1, 25)
         if self.verbose: gen = tqdm(gen)
@@ -90,6 +87,9 @@ class FeatureExtractor:
         song_feature_array = np.array(song_feature_array)
         speech_label_array = np.array(speech_label_array)
         song_label_array = np.array(song_label_array)
+        
+        if self.verbose: 
+            print("Saving to disk.")
         
         np.save(open(p1, "wb"), speech_feature_array)
         np.save(open(p2, "wb"), song_feature_array)

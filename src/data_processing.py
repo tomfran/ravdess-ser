@@ -25,10 +25,57 @@ class FeatureExtractor:
     def _extract_features(self, path: str) -> np.array:       
         y, sr = lb.load(path, sr = None)
         y = lb.util.fix_length(y, self.audio_fixed_size)
-        
-        mfcc = lb.feature.mfcc(y, sr, n_mfcc=13)
-        x, y = mfcc.shape
-        return mfcc.reshape(x*y)
+        stft = np.abs(lb.stft(y))
+        pitches, magnitudes = lb.piptrack(y=y, sr=sr, S=stft, fmin=70, fmax=400)
+        pitch = []
+        for i in range(magnitudes.shape[1]):
+            index = magnitudes[:, 1].argmax()
+            pitch.append(pitches[index, i])
+
+        pitch_tuning_offset = lb.pitch_tuning(pitches)
+        pitchmean = np.mean(pitch)
+        pitchstd = np.std(pitch)
+        pitchmax = np.max(pitch)
+        pitchmin = np.min(pitch)
+
+        cent = lb.feature.spectral_centroid(y=y, sr=sr)
+        cent = cent / np.sum(cent)
+        meancent = np.mean(cent)
+        stdcent = np.std(cent)
+        maxcent = np.max(cent)
+
+        flatness = np.mean(lb.feature.spectral_flatness(y=y))
+
+        mfccs = np.mean(lb.feature.mfcc(y=y, sr=sr, n_mfcc=50).T, axis=0)
+        mfccsstd = np.std(lb.feature.mfcc(y=y, sr=sr, n_mfcc=50).T, axis=0)
+        mfccmax = np.max(lb.feature.mfcc(y=y, sr=sr, n_mfcc=50).T, axis=0)
+
+        chroma = np.mean(lb.feature.chroma_stft(S=stft, sr=sr).T, axis=0)
+
+        mel = np.mean(lb.feature.melspectrogram(y=y, sr=sr).T, axis=0)
+
+        contrast = np.mean(lb.feature.spectral_contrast(S=stft, sr=sr).T, axis=0)
+
+        zerocr = np.mean(lb.feature.zero_crossing_rate(y))
+
+        S, phase = lb.magphase(stft)
+        meanMagnitude = np.mean(S)
+        stdMagnitude = np.std(S)
+        maxMagnitude = np.max(S)
+
+        rmse = lb.feature.rms(S=S)[0]
+        meanrms = np.mean(rmse)
+        stdrms = np.std(rmse)
+        maxrms = np.max(rmse)
+
+        ext_features = np.array([
+            flatness, zerocr, meanMagnitude, maxMagnitude, meancent, stdcent,
+            maxcent, stdMagnitude, pitchmean, pitchmax, pitchstd,
+            pitch_tuning_offset, meanrms, maxrms, stdrms
+        ])
+
+        ext_features = np.concatenate((ext_features, mfccs, mfccsstd, mfccmax, chroma, mel, contrast))
+        return ext_features
     
     def _extract_label(self, path: str) -> int:
         filename = path.split("/")[-1]

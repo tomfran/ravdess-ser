@@ -36,3 +36,20 @@ def show_duration_distribution(speech_path : str, song_path : str, limit_per_act
 
     plt.show()
     return max_len
+
+def plot_history(history):
+    fig, ax = plt.subplots(1, 2, sharex=True, figsize=(15,5))
+    ax[0].plot(history.history['accuracy'])
+    ax[0].plot(history.history['val_accuracy'])
+    ax[0].set_title('Accuracy')
+    ax[0].set_ylabel('accuracy')
+    ax[0].set_xlabel('epoch')
+    ax[0].legend(['train', 'val'], loc='upper left')
+
+    ax[1].plot(history.history['loss'])
+    ax[1].plot(history.history['val_loss'])
+    ax[1].set_title('Loss')
+    ax[1].set_ylabel('loss')
+    ax[1].set_xlabel('epoch')
+    ax[1].legend(['train', 'val'], loc='upper left')
+    plt.show()

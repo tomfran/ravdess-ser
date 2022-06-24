@@ -4,6 +4,8 @@ data
 # Latex folder
 report
 
+papers
+
 # Test notebook
 notebook_test.ipynb
 

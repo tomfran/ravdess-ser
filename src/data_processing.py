@@ -1,9 +1,9 @@
-from ssl import PROTOCOL_TLSv1_1
-import pandas as pd
 import numpy as np
 import librosa as lb
 import os
 from tqdm import tqdm
+from audiomentations import Compose, AddGaussianNoise, TimeStretch, PitchShift, Shift
+
 
 class FeatureExtractor: 
     
@@ -21,10 +21,20 @@ class FeatureExtractor:
         self.file_per_actor_limit = file_per_actor_limit
         self.save_path            = save_path
         self.audio_fixed_size     = audio_fixed_size
+        self.augmenter = Compose([
+            AddGaussianNoise(min_amplitude=0.001, max_amplitude=0.015, p=0.5),
+            TimeStretch(min_rate=0.8, max_rate=1.25, p=0.5),
+            PitchShift(min_semitones=-4, max_semitones=4, p=0.5),
+            Shift(min_fraction=-0.5, max_fraction=0.5, p=0.5),
+        ])
     
-    def _extract_features(self, path: str) -> np.array:       
+    def _extract_features(self, args: tuple) -> np.array:
+        path, augment = args
         y, sr = lb.load(path, sr = None)
         y = lb.util.fix_length(y, self.audio_fixed_size)
+        if augment:
+            y = self.augmenter(y, sr)
+            
         stft = np.abs(lb.stft(y))
         pitches, magnitudes = lb.piptrack(y=y, sr=sr, S=stft, fmin=70, fmax=400)
         pitch = []
@@ -76,12 +86,11 @@ class FeatureExtractor:
 
         ext_features = np.concatenate((ext_features, mfccs, mfccsstd, mfccmax, chroma, mel, contrast))
         return ext_features
-    
+     
     def _extract_label(self, path: str) -> int:
         filename = path.split("/")[-1]
         parts = [int(e) for e in filename[:filename.find(".")].split("-")]
-        # all labels starts from one
-        emotion     = parts[2]-1
+        emotion = parts[2]-1
         return np.array([emotion])
     
     def _list_files_actor(self, i: int, mode: str) -> list:
@@ -103,6 +112,8 @@ class FeatureExtractor:
         p2 = f"{self.save_path}/song_feature_array.npy"
         p3 = f"{self.save_path}/speech_label_array.npy"
         p4 = f"{self.save_path}/song_label_array.npy"
+        p5 = f"{self.save_path}/speech_augmented_feature_array.npy"
+        p6 = f"{self.save_path}/song_augmented_feature_array.npy"
         
         if not overwrite and os.path.exists(p1):
             if self.verbose:
@@ -111,10 +122,14 @@ class FeatureExtractor:
             f2 = np.load(open(p2, "rb"))
             f3 = np.load(open(p3, "rb"))
             f4 = np.load(open(p4, "rb"))
-            return f1, f2, f3, f4
+            f5 = np.load(open(p5, "rb"))
+            f6 = np.load(open(p6, "rb"))
+            return f1, f2, f3, f4, f5, f6
             
         speech_feature_array, song_feature_array = [], []
+        speech_augmented_feature_array, song_augmented_feature_array = [], []
         speech_label_array, song_label_array = [], []
+        
         if self.verbose: 
             print("Extracting features from audio files.")
             
@@ -123,15 +138,19 @@ class FeatureExtractor:
         for actor_id in gen:
             
             l1 = self._list_files_actor(actor_id, "speech")
-            speech_feature_array += list(map(self._extract_features, l1))
+            speech_feature_array += list(map(self._extract_features, zip(l1, [False]*len(l1))))
+            speech_augmented_feature_array += list(map(self._extract_features, zip(l1, [True]*len(l1))))
             speech_label_array += list(map(self._extract_label, l1))
             
             l2 = self._list_files_actor(actor_id, "song")
-            song_feature_array += list(map(self._extract_features, l2))
+            song_feature_array += list(map(self._extract_features, zip(l2, [False]*len(l2))))
+            song_augmented_feature_array += list(map(self._extract_features, zip(l2, [True]*len(l2))))
             song_label_array += list(map(self._extract_label, l2))
             
         speech_feature_array = np.array(speech_feature_array)
         song_feature_array = np.array(song_feature_array)
+        speech_augmented_feature_array = np.array(speech_augmented_feature_array)
+        song_augmented_feature_array = np.array(song_augmented_feature_array)
         speech_label_array = np.array(speech_label_array)
         song_label_array = np.array(song_label_array)
         
@@ -142,5 +161,8 @@ class FeatureExtractor:
         np.save(open(p2, "wb"), song_feature_array)
         np.save(open(p3, "wb"), speech_label_array)
         np.save(open(p4, "wb"), song_label_array)
+        np.save(open(p5, "wb"), speech_augmented_feature_array)
+        np.save(open(p6, "wb"), song_augmented_feature_array)
         
-        return speech_feature_array, song_feature_array, speech_label_array, song_label_array
+        
+        return speech_feature_array, song_feature_array, speech_label_array, song_label_array, speech_augmented_feature_array, song_augmented_feature_array

@@ -5,9 +5,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 def show_duration_distribution(speech_path : str, song_path : str, limit_per_actor: int) -> None:
-
+    
     max_len = 0
-
     def get_file_paths(s):
         return sorted([f"{s}/{e}" for e in os.listdir(s)][:limit_per_actor])
 
@@ -19,7 +18,7 @@ def show_duration_distribution(speech_path : str, song_path : str, limit_per_act
 
     song_len, speech_len = [], []
 
-    for i in tqdm(range(1, 25)):
+    for i in range(1, 25):
         els1 = get_file_paths(f"{speech_path}/Actor_{i:02d}")
         speech_len += list(map(get_audio_duration, els1))
         els2 = get_file_paths(f"{song_path}/Actor_{i:02d}")

@@ -88,10 +88,12 @@ class FeatureExtractor:
         return ext_features
      
     def _extract_label(self, path: str) -> int:
-        filename = path.split("/")[-1]
+        filename = path.split("/")[-1].replace(".mp4", "")
         parts = [int(e) for e in filename[:filename.find(".")].split("-")]
-        emotion = parts[2]-1
-        return np.array([emotion])
+        emotion = parts[2] - 1
+        vocal_channel = parts[1] - 1
+        gender = parts[-1] % 2
+        return np.array([emotion, vocal_channel, gender])
     
     def _list_files_actor(self, i: int, mode: str) -> list:
         

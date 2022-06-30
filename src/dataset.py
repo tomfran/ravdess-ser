@@ -14,7 +14,7 @@ class Dataset():
         self.X_aug_song   = data[5]
         self.augment      = augment
         
-    def _get_splits(self, data: str, train_perc: float, val_perc: float) -> list:
+    def _get_splits(self, data: str, label: str, train_perc: float, val_perc: float) -> list:
         if data == "speech":
             X, y, XX = self.X_speech, self.y_speech, self.X_aug_speech
         elif data == "song":
@@ -24,6 +24,12 @@ class Dataset():
         else: 
             raise Exception(f"Data must be speech or song, not {data}")
                
+        label_mapping = {"emotion" : 0, "vocal_channel" : 1, "gender" : 2}
+        if label != "all":
+            y = y[ :, label_mapping[label]]
+            x = y.shape[0]
+            y = y.reshape(x, 1)
+
         x_indices = np.arange(len(X))
         
         X_train_ind, X_test_ind, y_train, y_test = train_test_split(x_indices, y, train_size=train_perc+val_perc, 
@@ -50,7 +56,7 @@ class Dataset():
         s.fit(train_data)
         return s
     
-    def get_training_data(self, data: str, train_perc: float, val_perc: float) -> list: 
-        X_train, X_val, X_test, y_train, y_val, y_test = self._get_splits(data, train_perc, val_perc)
+    def get_training_data(self, data: str, label: str, train_perc: float, val_perc: float) -> list: 
+        X_train, X_val, X_test, y_train, y_val, y_test = self._get_splits(data, label, train_perc, val_perc)
         scaler = self._train_scaler(X_train)
         return scaler.transform(X_train), scaler.transform(X_val), scaler.transform(X_test), y_train, y_val, y_test

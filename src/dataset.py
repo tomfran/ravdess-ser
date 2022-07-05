@@ -5,41 +5,27 @@ from sklearn.preprocessing import StandardScaler, scale
 
 class Dataset():
     
-    def __init__(self, data: tuple, augment: bool) -> None:
-        self.X_speech     = data[0]
-        self.X_song       = data[1]
-        self.y_speech     = data[2]
-        self.y_song       = data[3]
-        self.X_aug_speech = data[4]
-        self.X_aug_song   = data[5]
-        self.augment      = augment
+    def __init__(self, original_data: tuple, augmented_data: list) -> None:
+        self.X     = original_data[0]
+        self.y     = original_data[1]
+        self.augmented_data = augmented_data
         
-    def _get_splits(self, data: str, label: str, train_perc: float, val_perc: float) -> list:
-        if data == "speech":
-            X, y, XX = self.X_speech, self.y_speech, self.X_aug_speech
-        elif data == "song":
-            X, y, XX = self.X_song, self.y_song, self.X_aug_song
-        elif data == "merge":
-            X, y, XX = np.concatenate((self.X_song, self.X_speech), axis=0), np.concatenate((self.y_song, self.y_speech), axis=0), np.concatenate((self.X_aug_song, self.X_aug_speech), axis=0)
-        else: 
-            raise Exception(f"Data must be speech or song, not {data}")
-               
-        label_mapping = {"emotion" : 0, "vocal_channel" : 1, "gender" : 2}
-        if label != "all":
-            y = y[ :, label_mapping[label]]
-            x = y.shape[0]
-            y = y.reshape(x, 1)
+    def _get_splits(self, train_perc: float, val_perc: float) -> list:      
+    
+        X, y = self.X, self.y
 
         x_indices = np.arange(len(X))
         
         X_train_ind, X_test_ind, y_train, y_test = train_test_split(x_indices, y, train_size=train_perc+val_perc, 
                                                             stratify=y, random_state=0)
-        # extract the test from the train data
+        # extract the test from the original data
         X_test = X[X_test_ind]
-        # add augmented data to X and y
-        if self.augment:    
-            X = np.concatenate((X[X_train_ind], XX[X_train_ind]), axis = 0)
-            y = np.concatenate((y[X_train_ind], y[X_train_ind]), axis = 0)
+
+        if self.augmented_data:
+            augmented_X = tuple([X[X_train_ind]] + [e[0][X_train_ind] for e in self.augmented_data])
+            augmented_y = tuple([y[X_train_ind]] + [e[1][X_train_ind] for e in self.augmented_data])
+            X = np.concatenate(augmented_X, axis = 0)
+            y = np.concatenate(augmented_y, axis = 0)
         else:
             X = X[X_train_ind]
             y = y[X_train_ind]
@@ -53,10 +39,33 @@ class Dataset():
     
     def _train_scaler(self, train_data: np.array) -> StandardScaler:
         s = StandardScaler()
-        s.fit(train_data)
+        
+        x = train_data.shape
+        if len(x) == 2:    
+            s.fit(train_data)
+        else:
+            reshaped_data = train_data.reshape((x[0], x[1]*x[2]))
+            s.fit(reshaped_data)
         return s
     
-    def get_training_data(self, data: str, label: str, train_perc: float, val_perc: float) -> list: 
-        X_train, X_val, X_test, y_train, y_val, y_test = self._get_splits(data, label, train_perc, val_perc)
-        scaler = self._train_scaler(X_train)
-        return scaler.transform(X_train), scaler.transform(X_val), scaler.transform(X_test), y_train, y_val, y_test
+    def _scale_data(self, s, data):
+        x = data.shape
+        if len(x) == 2:    
+            return s.transform(data)
+        else:
+            reshaped_data = data.reshape((x[0], x[1]*x[2]))
+            scaled_data = s.transform(reshaped_data)
+            return scaled_data.reshape((x[0], x[1], x[2]))
+    
+    def get_training_data(self, label: str, train_perc: float, val_perc: float) -> list: 
+        X_train, X_val, X_test, y_train, y_val, y_test = self._get_splits(train_perc, val_perc)
+        s = self._train_scaler(X_train)
+        
+        label_mapping = {"emotion" : 0, "vocal_channel" : 1, "gender" : 2}
+        if label == "all":    
+            return (self._scale_data(s, X_train), self._scale_data(s, X_val), self._scale_data(s, X_test), 
+                    y_train, y_val, y_test)
+        else:
+            i = label_mapping[label]
+            return (self._scale_data(s, X_train), self._scale_data(s, X_val), self._scale_data(s, X_test), 
+                    y_train[ :, i], y_val[ :, i], y_test[ :, i])

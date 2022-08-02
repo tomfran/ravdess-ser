@@ -82,11 +82,15 @@ def plot_classes(y):
     
 def plot_clusters(d):
     pca = PCA(n_components=2)
-    X_train, _, _, y_train, _, _ = d.get_training_data(label="all", train_perc=0.6, val_perc=0.2)
+    X_train, _, _, y_train, _, _ = d.get_training_data(label="all", train_perc=0.6, val_perc=0.2, flatten=True)
     reduced_data = pca.fit_transform(X_train)
     fig, ax = plt.subplots(1, 2, figsize=(20, 8))
     ax[0].set_title("Speech labeled by emotion")
     sns.scatterplot(x=reduced_data[:, 0], y=reduced_data[:, 1], ax=ax[0], hue=y_train[:, 0])
     ax[1].set_title("Speech labeled by gender")
     sns.scatterplot(x=reduced_data[:, 0], y=reduced_data[:, 1], ax=ax[1], hue=y_train[:, 2])
+    ax[0].set_ylim((-60, 60))
+    ax[0].set_xlim((-10, 20))
+    ax[1].set_ylim((-60, 60))
+    ax[1].set_xlim((-10, 20))
     plt.show()

@@ -11,8 +11,7 @@ class FeatureExtractor:
                  raw_data: np.array, 
                  labels: np.array, 
                  save_path: str, 
-                 file_name: str, 
-                 extractor: int, 
+                 file_name: str,
                  augmenter: callable, 
                  verbose: bool) -> None:
         
@@ -20,80 +19,15 @@ class FeatureExtractor:
         self.labels = labels
         self.save_path = save_path
         self.file_name = file_name
-        self.extractor = extractor
         self.augmenter = augmenter
         self.verbose = verbose
         self.sr = 48000
     
     def _extract_features(self, array: np.array) -> np.array:
 
-        y = self.augmenter(array)           
-            
-        # classic features
-        stft = np.abs(lb.stft(y))
-        pitches, magnitudes = lb.piptrack(y=y, sr=self.sr, S=stft, fmin=70, fmax=400)
-        pitch = []
-        for i in range(magnitudes.shape[1]):
-            index = magnitudes[:, 1].argmax()
-            pitch.append(pitches[index, i])
-
-        pitch_tuning_offset = lb.pitch_tuning(pitches)
-        pitchmean = np.mean(pitch)
-        pitchstd = np.std(pitch)
-        pitchmax = np.max(pitch)
-        pitchmin = np.min(pitch)
-
-        cent = lb.feature.spectral_centroid(y=y, sr=self.sr)
-        cent = cent / np.sum(cent)
-        meancent = np.mean(cent)
-        stdcent = np.std(cent)
-        maxcent = np.max(cent)
-
-        flatness = np.mean(lb.feature.spectral_flatness(y=y))
-
-        mfccs = np.mean(lb.feature.mfcc(y=y, sr=self.sr, n_mfcc=50).T, axis=0)
-        mfccsstd = np.std(lb.feature.mfcc(y=y, sr=self.sr, n_mfcc=50).T, axis=0)
-        mfccmax = np.max(lb.feature.mfcc(y=y, sr=self.sr, n_mfcc=50).T, axis=0)
-
-        chroma = np.mean(lb.feature.chroma_stft(S=stft, sr=self.sr).T, axis=0)
-
-        mel = np.mean(lb.feature.melspectrogram(y=y, sr=self.sr).T, axis=0)
-
-        contrast = np.mean(lb.feature.spectral_contrast(S=stft, sr=self.sr).T, axis=0)
-
-        zerocr = np.mean(lb.feature.zero_crossing_rate(y))
-
-        S, phase = lb.magphase(stft)
-        meanMagnitude = np.mean(S)
-        stdMagnitude = np.std(S)
-        maxMagnitude = np.max(S)
-
-        rmse = lb.feature.rms(S=S)[0]
-        meanrms = np.mean(rmse)
-        stdrms = np.std(rmse)
-        maxrms = np.max(rmse)
-
-        ext_features = np.array([
-            flatness, zerocr, meanMagnitude, maxMagnitude, meancent, stdcent,
-            maxcent, stdMagnitude, pitchmean, pitchmax, pitchstd,
-            pitch_tuning_offset, meanrms, maxrms, stdrms
-        ])
-
-        ext_features = np.concatenate((ext_features, mfccs, mfccsstd, mfccmax, chroma, mel, contrast))
-        return ext_features
-    
-    def _extract_cnn_features(self, array: np.array):
         y = self.augmenter(array)
-        spectrogram = lb.feature.melspectrogram(y=y, sr=self.sr, n_mels=128)
-        db_spec = lb.power_to_db(spectrogram)
-        ret = np.mean(db_spec, axis = 0)
-        return ret
-    
-    def _extract_2d_cnn_features(self, array: np.array):
-        y = self.augmenter(array)
-        spectrogram = lb.feature.melspectrogram(y=y, sr=self.sr, n_mels=128)
-        db_spec = lb.power_to_db(spectrogram)
-        return db_spec
+        mfccs = lb.feature.mfcc(y=y, sr=self.sr, n_mfcc=40)
+        return mfccs
       
     def get_training_data(self, overwrite: bool) -> tuple:
         p =  f"{self.save_path}/{self.file_name}.npy"
@@ -104,19 +38,14 @@ class FeatureExtractor:
             return np.load(open(p, "rb")), self.labels
                     
         # apply the feature extraction to all data
-        
-        f = [self._extract_features,
-            self._extract_cnn_features, 
-            self._extract_2d_cnn_features][self.extractor]
-        
+                
         if self.verbose: 
-            print(f"Extracting: \n\t- filename: {self.file_name}\n\t- extractor : {f.__name__}\n")
+            print(f"Extracting: \n\t- filename: {self.file_name}")
         
         res = []
         with Pool(processes=4) as pool:
-            res = pool.map(f, tqdm(self.raw_data))
-        data = np.array(res)        
-        # data = np.array(list(map(f, tqdm(self.raw_data))))
+            res = pool.map(self._extract_features, tqdm(self.raw_data))
+        data = np.array(res)
         np.save(open(p, "wb"), data)
         
         return data, self.labels

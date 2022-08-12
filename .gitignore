@@ -1,10 +1,11 @@
+makefile
+
 # Data folder
 *.zip
 data
+
 .vscode/
 notes.md
-# Latex folder
-report
 
 papers
 

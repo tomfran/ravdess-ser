@@ -12,7 +12,6 @@ class FeatureExtractor:
                  labels: np.array, 
                  save_path: str, 
                  file_name: str,
-                 augmenter: callable, 
                  verbose: bool, 
                  only_mfcc: bool) -> None:
         
@@ -20,17 +19,13 @@ class FeatureExtractor:
         self.labels = labels
         self.save_path = save_path
         self.file_name = file_name
-        self.augmenter = augmenter
         self.verbose = verbose
-        self.sr = 48000
+        self.sr = 22050
         self.only_mfcc = only_mfcc
     
     def _extract_features(self, array: np.array) -> np.array:
         if self.only_mfcc:           
-             
-            y = self.augmenter(array)
-            features = np.mean(librosa.feature.mfcc(y=y, sr=self.sr, n_mfcc=40).T, axis=0)
-        
+             features = np.mean(librosa.feature.mfcc(y=array, sr=self.sr, n_mfcc=40).T, axis=0)
         else:
             
             stft = np.abs(librosa.stft(array))
@@ -104,24 +99,3 @@ class FeatureExtractor:
         np.save(open(p, "wb"), data)
         
         return data, self.labels
-    
-def noise(x):
-    noise_amp = 0.05*np.random.uniform()*np.amax(x)   
-    x = x.astype('float64') + noise_amp * np.random.normal(size=x.shape[0])
-    return x
-
-def stretch(x, rate=0.8):
-    data = librosa.effects.time_stretch(x, rate)
-    return librosa.util.fix_length(data, 116247) 
-
-def speedpitch(x):
-    length_change = np.random.uniform(low=0.8, high = 1)
-    speed_fac = 1.4  / length_change 
-    tmp = np.interp(np.arange(0,len(x),speed_fac),np.arange(0,len(x)),x)
-    minlen = min(x.shape[0], tmp.shape[0])
-    x *= 0
-    x[0:minlen] = tmp[0:minlen]
-    return x
-
-def identity(x):
-    return x

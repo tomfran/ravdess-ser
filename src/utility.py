@@ -89,8 +89,4 @@ def plot_clusters(d):
     sns.scatterplot(x=reduced_data[:, 0], y=reduced_data[:, 1], ax=ax[0], hue=y_train[:, 0])
     ax[1].set_title("Speech labeled by gender")
     sns.scatterplot(x=reduced_data[:, 0], y=reduced_data[:, 1], ax=ax[1], hue=y_train[:, 2])
-    # ax[0].set_ylim((-60, 60))
-    # ax[0].set_xlim((-10, 20))
-    # ax[1].set_ylim((-60, 60))
-    # ax[1].set_xlim((-10, 20))
     plt.show()

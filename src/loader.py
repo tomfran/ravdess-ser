@@ -2,6 +2,7 @@ import numpy as np
 import os
 import librosa
 from tqdm import tqdm
+from audiomentations import Compose, AddGaussianNoise, TimeStretch, PitchShift, Shift
 
 class Loader():
     
@@ -56,3 +57,18 @@ class Loader():
         np.save(open(p2, "wb"), labels)
         
         return data, labels
+    
+    
+class Augmenter():
+    
+    def __init__(self, loader) -> None:
+        self.loader = loader
+        self.aug = Compose([AddGaussianNoise(min_amplitude=0.0005, max_amplitude=0.001, p=1),
+                            TimeStretch(min_rate=0.9, max_rate=1.1, p=1),
+                            PitchShift(min_semitones=-4, max_semitones=4, p=1)])
+        
+    def augment(self):
+        data, labels = self.loader.load(False)
+        # sample rate like this is dirty but a quick fix
+        augmented_samples = self.aug(data, 22050)
+        return augmented_samples, labels

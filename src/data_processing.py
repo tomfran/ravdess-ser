@@ -1,4 +1,3 @@
-import numpy as np
 import librosa
 import os
 from tqdm import tqdm
@@ -7,13 +6,7 @@ from multiprocessing import Pool
 
 class FeatureExtractor: 
     
-    def __init__(self, 
-                 raw_data: np.array, 
-                 labels: np.array, 
-                 save_path: str, 
-                 file_name: str,
-                 verbose: bool, 
-                 only_mfcc: bool) -> None:
+    def __init__(self, raw_data: np.array, labels: np.array, save_path: str, file_name: str,verbose: bool, only_mfcc: bool) -> None:
         
         self.raw_data = raw_data
         self.labels = labels
@@ -24,6 +17,7 @@ class FeatureExtractor:
         self.only_mfcc = only_mfcc
     
     def _extract_features(self, array: np.array) -> np.array:
+        
         if self.only_mfcc:           
              features = np.mean(librosa.feature.mfcc(y=array, sr=self.sr, n_mfcc=40).T, axis=0)
         else:
@@ -82,6 +76,7 @@ class FeatureExtractor:
         return features
       
     def get_training_data(self, overwrite: bool) -> tuple:
+
         p =  f"{self.save_path}/{self.file_name}.npy"
         
         if not overwrite and os.path.exists(p):

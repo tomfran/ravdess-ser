@@ -6,19 +6,14 @@ from audiomentations import Compose, AddGaussianNoise, TimeStretch, PitchShift, 
 
 class Loader():
     
-    def __init__(self, 
-                 speech_path: str,
-                 save_path: str, 
-                 verbose: bool, 
-                 audio_size: int, 
-                 limit: int) -> None:
+    def __init__(self, speech_path: str,save_path: str, verbose: bool, audio_size: int, limit: int) -> None:
         self.speech_path = speech_path
         self.verbose = verbose
         self.audio_size = audio_size
         self.save_path = save_path
         self.limit = limit
         
-    def _list_files_actor(self, i: int) -> list:        
+    def _list_files_actor(self, i: int) -> list:  
         base_path = f"{self.speech_path}/Actor_{i:02d}"
         return [f"{base_path}/{e}" for e in sorted(os.listdir(base_path))][:self.limit]
     
@@ -40,7 +35,7 @@ class Loader():
         
         p1 = f"{self.save_path}/raw_load.npy"
         p2 = f"{self.save_path}/feature_load.npy"
-        
+    
         if not overwrite and os.path.exists(p1) and os.path.exists(p2):
             return np.load(open(p1, "rb")), np.load(open(p2, "rb"))
         
@@ -61,14 +56,12 @@ class Loader():
     
 class Augmenter():
     
-    def __init__(self, loader) -> None:
+    def __init__(self, loader, augmenter) -> None:
         self.loader = loader
-        self.aug = Compose([AddGaussianNoise(min_amplitude=0.0005, max_amplitude=0.001, p=1),
-                            TimeStretch(min_rate=0.9, max_rate=1.1, p=1),
-                            PitchShift(min_semitones=-4, max_semitones=4, p=1)])
+        self.aug = augmenter
         
     def augment(self):
         data, labels = self.loader.load(False)
-        # sample rate like this is dirty but a quick fix
+        # sample rate like this is dirty
         augmented_samples = self.aug(data, 22050)
         return augmented_samples, labels

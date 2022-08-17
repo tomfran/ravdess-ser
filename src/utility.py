@@ -3,6 +3,7 @@ import librosa as lb
 import seaborn as sns
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_samples, silhouette_score
 import matplotlib.pyplot as plt
 from collections import Counter
 import numpy as np
@@ -87,6 +88,7 @@ def plot_clusters(d):
     fig, ax = plt.subplots(1, 2, figsize=(20, 8))
     ax[0].set_title("Speech labeled by emotion")
     sns.scatterplot(x=reduced_data[:, 0], y=reduced_data[:, 1], ax=ax[0], hue=y_train[:, 0])
-    ax[1].set_title("Speech labeled by gender")
-    sns.scatterplot(x=reduced_data[:, 0], y=reduced_data[:, 1], ax=ax[1], hue=y_train[:, 2])
+    ax[1].set_title("K means clusters")
+    clusters = KMeans(n_clusters=3).fit_predict(reduced_data)
+    sns.scatterplot(x=reduced_data[:, 0], y=reduced_data[:, 1], ax=ax[1], hue=clusters)
     plt.show()

@@ -18,3 +18,5 @@ The study is divided among different notebooks:
 - `02_training.ipynb`: initial training of neural networks and simpler models;
 - `03_data_augmentation.ipynb`: experiments with data augmentation.
 - `04_cross_validation.ipynb`: cross validation results.
+    
+[Report link](https://github.com/tomfran/ravdess-ser/blob/main/report/report.pdf)
